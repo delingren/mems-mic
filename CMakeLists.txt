@@ -27,6 +27,8 @@ project(pico_microphone)
 # initialize the Pico SDK
 pico_sdk_init()
 
+add_compile_definitions(LOG=2)
+
 add_library(pico_pdm_microphone INTERFACE)
 
 target_sources(pico_pdm_microphone INTERFACE
@@ -55,6 +57,6 @@ target_include_directories(pico_analog_microphone INTERFACE
 
 target_link_libraries(pico_analog_microphone INTERFACE pico_stdlib hardware_adc hardware_dma)
 
-add_subdirectory("examples/hello_analog_microphone")
-add_subdirectory("examples/hello_pdm_microphone")
+# add_subdirectory("examples/hello_analog_microphone")
+# add_subdirectory("examples/hello_pdm_microphone")
 add_subdirectory("examples/usb_microphone")

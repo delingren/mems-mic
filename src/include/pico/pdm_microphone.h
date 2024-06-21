@@ -18,7 +18,6 @@ struct pdm_microphone_config {
     PIO pio;
     uint pio_sm;
     uint sample_rate;
-    uint sample_buffer_size;
 };
 
 int pdm_microphone_init(const struct pdm_microphone_config* config);

@@ -36,5 +36,13 @@
     "raspberry-pi-pico.useCmakeTools": false,
     "raspberry-pi-pico.cmakePath": "${HOME}/.pico-sdk/cmake/v3.28.0-rc6/bin/cmake",
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
-    "raspberry-pi-pico.python3Path": "${HOME}/.pico-sdk/python/3.12.1/python.exe"
+    "raspberry-pi-pico.python3Path": "${HOME}/.pico-sdk/python/3.12.1/python.exe",
+    "files.associations": {
+        "usb_microphone.h": "c",
+        "pdm_microphone.h": "c",
+        "usbd.h": "c",
+        "tusb.h": "c",
+        "cdc_device.h": "c",
+        "cdc.h": "c"
+    }
 }

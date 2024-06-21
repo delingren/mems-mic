@@ -40,11 +40,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
     memset(&pdm_mic, 0x00, sizeof(pdm_mic));
     memcpy(&pdm_mic.config, config, sizeof(pdm_mic.config));
 
-    if (config->sample_buffer_size % (config->sample_rate / 1000)) {
-        return -1;
-    }
-
-    pdm_mic.raw_buffer_size = config->sample_buffer_size * (PDM_DECIMATION / 8);
+    pdm_mic.raw_buffer_size = config->sample_rate / 1000 * (PDM_DECIMATION / 8);
 
     for (int i = 0; i < PDM_RAW_BUFFER_COUNT; i++) {
         pdm_mic.raw_buffer[i] = malloc(pdm_mic.raw_buffer_size);
@@ -221,8 +217,8 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
     int filter_stride = (pdm_mic.filter.Fs / 1000);
     samples = (samples / filter_stride) * filter_stride;
 
-    if (samples > pdm_mic.config.sample_buffer_size) {
-        samples = pdm_mic.config.sample_buffer_size;
+    if (samples > pdm_mic.config.sample_rate / 1000) {
+        samples = pdm_mic.config.sample_rate / 1000;
     }
 
     if (pdm_mic.raw_buffer_write_index == pdm_mic.raw_buffer_read_index) {

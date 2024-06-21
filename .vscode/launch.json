@@ -4,7 +4,7 @@
         {
             "name": "Pico Debug (Cortex-Debug)",
             "cwd": "${workspaceRoot}",
-            "executable": "${command:raspberry-pi-pico.launchTargetPath}",
+            "executable": "/Users/deling/repo/pico-microphone/build/examples/usb_microphone/usb_microphone.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",

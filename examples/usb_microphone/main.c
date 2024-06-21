@@ -23,11 +23,10 @@ const struct pdm_microphone_config config = {
   .pio = pio0,
   .pio_sm = 0,
   .sample_rate = SAMPLE_RATE,
-  .sample_buffer_size = SAMPLE_BUFFER_SIZE,
 };
 
 // variables
-uint16_t sample_buffer[SAMPLE_BUFFER_SIZE];
+int16_t sample_buffer[SAMPLES_PER_MS * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX];
 
 // callback functions
 void on_pdm_samples_ready();
@@ -58,7 +57,24 @@ void on_pdm_samples_ready()
   // internal sample buffer are ready for reading.
   //
   // Read new samples into local buffer.
-  pdm_microphone_read(sample_buffer, SAMPLE_BUFFER_SIZE);
+
+  pdm_microphone_read(sample_buffer, SAMPLES_PER_MS);
+
+// Every 5 seconds, generate a bump of 100 ms
+  // static int counter = 0;
+  // if (counter ++ == 5100) {
+  //   counter = 0;
+  // }
+  
+  for (int i = SAMPLES_PER_MS - 1; i >= 0; i --) {
+    // if (counter >= 5000) {
+    //   sample_buffer[i * 2 + 1] = i < SAMPLE_BUFFER_SIZE/2 ? i * 4000 : (SAMPLE_BUFFER_SIZE-i) * 4000;
+    // } else {
+    //   sample_buffer[i * 2 + 1] = 0;
+    // }
+    sample_buffer[i * 2] = sample_buffer[i];
+    sample_buffer[i * 2 + 1] = sample_buffer[i];
+  }
 }
 
 void on_usb_microphone_tx_ready()
