@@ -36,14 +36,21 @@ static struct {
 
 static void pdm_dma_handler();
 
+uint8_t* raw_buffer_left;
+uint8_t* raw_buffer_right;
+
 int pdm_microphone_init(const struct pdm_microphone_config* config) {
     memset(&pdm_mic, 0x00, sizeof(pdm_mic));
     memcpy(&pdm_mic.config, config, sizeof(pdm_mic.config));
 
-    pdm_mic.raw_buffer_size = config->sample_rate / 1000 * (PDM_DECIMATION / 8);
+    pdm_mic.raw_buffer_size = 2 * config->sample_rate / 1000 * (PDM_DECIMATION / 8); // 2 channels
+
+    // Separate left and right signals, whose bits are alternating.
+    raw_buffer_left = malloc(pdm_mic.raw_buffer_size/2);
+    raw_buffer_right = malloc(pdm_mic.raw_buffer_size/2);
 
     for (int i = 0; i < PDM_RAW_BUFFER_COUNT; i++) {
-        pdm_mic.raw_buffer[i] = malloc(pdm_mic.raw_buffer_size);
+        pdm_mic.raw_buffer[i] = malloc(pdm_mic.raw_buffer_size); 
         if (pdm_mic.raw_buffer[i] == NULL) {
             pdm_microphone_deinit();
 
@@ -225,7 +232,22 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
         return 0;
     }
 
-    uint8_t* in = pdm_mic.raw_buffer[pdm_mic.raw_buffer_read_index];
+    for (int i = 0; i < pdm_mic.raw_buffer_size / 2; i ++) {
+        uint8_t byte1 = pdm_mic.raw_buffer[pdm_mic.raw_buffer_read_index][i * 2];
+        uint8_t byte2 = pdm_mic.raw_buffer[pdm_mic.raw_buffer_read_index][i * 2 + 1];
+        uint8_t left = 
+            (byte1 & 0x80) << 0 | (byte1 & 0x20) << 1 | (byte1 & 0x08) << 2 | (byte1 & 0x02) << 3 |
+            (byte2 & 0x80) >> 4 | (byte2 & 0x20) >> 3 | (byte2 & 0x08) >> 2 | (byte2 & 0x02) >> 1;
+
+        uint8_t right = 
+            (byte1 & 0x40) << 1 | (byte1 & 0x10) << 2 | (byte1 & 0x04) << 3 | (byte1 & 0x01) << 4 |
+            (byte2 & 0x40) >> 3 | (byte2 & 0x10) >> 2 | (byte2 & 0x04) >> 1 | (byte2 & 0x01) >> 0;
+
+        raw_buffer_left[i] = left;
+        raw_buffer_right[i] = right;
+    }
+
+    uint8_t* in = raw_buffer_left; // pdm_mic.raw_buffer[pdm_mic.raw_buffer_read_index];
     int16_t* out = buffer;
 
     pdm_mic.raw_buffer_read_index++;
