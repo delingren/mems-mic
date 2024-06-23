@@ -1,5 +1,15 @@
 # Microphone Library for Pico
 
+I forked this library to interface a stereo microphone with my computer. The said microphone is two mics on one PCB. Each has its own clock and data wires. I modified `usb_microphone` example to sample both mics and mux the signals into one USB stream. If anyone comes upon this repo, note that I have no intention or interest to make this a library. It works for this particular application. The code is super hacky and ugly. See the [original post](https://www.hackster.io/sandeep-mistry/create-a-usb-microphone-with-the-raspberry-pi-pico-cc9bd5) for more information about PDM microphones. I also referenced the `audio_4_channel_mic` example from [tinyusb lib](https://github.com/hathach/tinyusb/tree/master/examples/device/audio_4_channel_mic/src).
+
+Highlights of my changes:
+* Define a USB descriptor for a 2-channel mic.
+* Modify PIO instructions to read 2 data pins (they need to be consecutive). Each pin for one channel.
+* Modify PDM filter code to separate signals from the raw samples collected from the previous step. Bits representing the left and right channels are alternating. I did some bitwise gymnastics to separate them with very few operations.
+* Modify PDM filter code to filter both signals. The filter code is stateful. You need to basically create two filters for two channels. You can't call the filter function on two signals.
+
+Original README follows
+
 Capture audio from a microphone on your [Raspberry Pi Pico](https://www.raspberrypi.org/products/raspberry-pi-pico/) or any [RP2040](https://www.raspberrypi.org/products/rp2040/) based board. 🎤
 
 
