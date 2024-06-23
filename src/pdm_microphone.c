@@ -97,15 +97,15 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         false
     );
 
-    pdm_mic.leftFilter.LP_HZ = config->sample_rate / 2;
-    pdm_mic.leftFilter.HP_HZ = 10;
+    pdm_mic.leftFilter.LP_HZ = 20000;
+    pdm_mic.leftFilter.HP_HZ = 20;
     pdm_mic.leftFilter.MaxVolume = 64;
-    pdm_mic.leftFilter.Gain = 16;
+    pdm_mic.leftFilter.Gain = 20;
 
-    pdm_mic.rightFilter.LP_HZ = config->sample_rate / 2;
-    pdm_mic.rightFilter.HP_HZ = 10;
+    pdm_mic.rightFilter.LP_HZ = 20000;
+    pdm_mic.rightFilter.HP_HZ = 20;
     pdm_mic.rightFilter.MaxVolume = 64;
-    pdm_mic.rightFilter.Gain = 16;
+    pdm_mic.rightFilter.Gain = 20;
 
     pdm_mic.filter_volume = 64;
 }
