@@ -59,11 +59,6 @@ void on_pdm_samples_ready()
   // Read new samples into local buffer.
 
   pdm_microphone_read(sample_buffer, SAMPLES_PER_MS);
-
-  for (int i = SAMPLES_PER_MS - 1; i >= 0; i --) {
-    sample_buffer[i * 2] = sample_buffer[i];
-    sample_buffer[i * 2 + 1] = sample_buffer[i];
-  }
 }
 
 void on_usb_microphone_tx_ready()

@@ -51,11 +51,6 @@
  */
 #define SINCN 3
 #define DECIMATION 64
-#ifdef PICO_BUILD
-#define FILTER_GAIN     Param->Gain
-#else
-#define FILTER_GAIN     16
-#endif
  
 #define HTONS(A) ((((uint16_t)(A) & 0xff00) >> 8) | \
                  (((uint16_t)(A) & 0x00ff) << 8))
@@ -69,7 +64,6 @@ typedef struct {
   /* Public */
   float LP_HZ;
   float HP_HZ;
-  uint16_t Fs;
   uint8_t MaxVolume;
 #ifdef PICO_BUILD
   uint8_t Gain;
@@ -87,8 +81,8 @@ typedef struct {
  
 /* Exported functions ------------------------------------------------------- */
  
-void Open_PDM_Filter_Init(TPDMFilter_InitStruct *init_struct);
-void Open_PDM_Filter_64(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
+void Open_PDM_Filter_Init(TPDMFilter_InitStruct *leftFilter, TPDMFilter_InitStruct *rightFilter, int sample_rate);
+void Open_PDM_Filter_64(uint8_t* data, int len, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *leftParam, TPDMFilter_InitStruct *rightParam);
  
 #ifdef __cplusplus
 }

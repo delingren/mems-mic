@@ -44,18 +44,40 @@ int32_t lut[256][DECIMATION / 8][SINCN];
  
  
 /* Functions -----------------------------------------------------------------*/
- 
-int32_t filter_tables_64(uint8_t *data, uint8_t sincn)
+
+static inline uint8_t left (uint8_t* word) {
+  return (((*word) & 0x55) << 1) | (*(word+1) & 0x55);
+}
+
+static inline uint8_t right(uint8_t* word) {
+  return ((*word) & 0xAA) | ((*(word+1) & 0xAA) >> 1); 
+}
+
+
+int32_t filter_tables_left_64(uint8_t *data, uint8_t sincn)
 {
   return (int32_t)
-    lut[data[0]][0][sincn] +
-    lut[data[1]][1][sincn] +
-    lut[data[2]][2][sincn] +
-    lut[data[3]][3][sincn] +
-    lut[data[4]][4][sincn] +
-    lut[data[5]][5][sincn] +
-    lut[data[6]][6][sincn] +
-    lut[data[7]][7][sincn];
+    lut[left(data+0)][0][sincn] +
+    lut[left(data+2)][1][sincn] +
+    lut[left(data+4)][2][sincn] +
+    lut[left(data+6)][3][sincn] +
+    lut[left(data+8)][4][sincn] +
+    lut[left(data+10)][5][sincn] +
+    lut[left(data+12)][6][sincn] +
+    lut[left(data+14)][7][sincn];
+}
+
+int32_t filter_tables_right_64(uint8_t *data, uint8_t sincn)
+{
+  return (int32_t)
+    lut[right(data+0)][0][sincn] +
+    lut[right(data+2)][1][sincn] +
+    lut[right(data+4)][2][sincn] +
+    lut[right(data+6)][3][sincn] +
+    lut[right(data+8)][4][sincn] +
+    lut[right(data+10)][5][sincn] +
+    lut[right(data+12)][6][sincn] +
+    lut[right(data+14)][7][sincn];
 }
 
 void convolve(uint32_t Signal[/* SignalLen */], unsigned short SignalLen,
@@ -79,24 +101,31 @@ void convolve(uint32_t Signal[/* SignalLen */], unsigned short SignalLen,
   }
 }
  
-void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
+void Open_PDM_Filter_Init(TPDMFilter_InitStruct *leftParam, TPDMFilter_InitStruct *rightParam, int sample_rate)
 {
   uint16_t i, j;
   int64_t sum = 0;
   
   for (i = 0; i < SINCN; i++) {
-    Param->Coef[i] = 0;
-    Param->bit[i] = 0;
+    leftParam->Coef[i] = 0;
+    leftParam->bit[i] = 0;
+    rightParam->Coef[i] = 0;
+    rightParam->bit[i] = 0;
   }
   for (i = 0; i < DECIMATION; i++) {
     sinc1[i] = 1;
   }
  
-  Param->OldOut = Param->OldIn = Param->OldZ = 0;
-  Param->LP_ALFA = (Param->LP_HZ != 0 ? (uint16_t) (Param->LP_HZ * 256 / (Param->LP_HZ + Param->Fs / (2 * 3.14159))) : 0);
-  Param->HP_ALFA = (Param->HP_HZ != 0 ? (uint16_t) (Param->Fs * 256 / (2 * 3.14159 * Param->HP_HZ + Param->Fs)) : 0);
- 
-  Param->FilterLen = DECIMATION * SINCN;       
+  leftParam->OldOut = leftParam->OldIn = leftParam->OldZ = 0;
+  leftParam->LP_ALFA = (leftParam->LP_HZ != 0 ? (uint16_t) (leftParam->LP_HZ * 256 / (leftParam->LP_HZ + sample_rate / (2 * 3.14159))) : 0);
+  leftParam->HP_ALFA = (leftParam->HP_HZ != 0 ? (uint16_t) (sample_rate * 256 / (2 * 3.14159 * leftParam->HP_HZ + sample_rate)) : 0); 
+  leftParam->FilterLen = DECIMATION * SINCN;
+
+  rightParam->OldOut = rightParam->OldIn = rightParam->OldZ = 0;
+  rightParam->LP_ALFA = (rightParam->LP_HZ != 0 ? (uint16_t) (rightParam->LP_HZ * 256 / (rightParam->LP_HZ + sample_rate / (2 * 3.14159))) : 0);
+  rightParam->HP_ALFA = (rightParam->HP_HZ != 0 ? (uint16_t) (sample_rate * 256 / (2 * 3.14159 * rightParam->HP_HZ + sample_rate)) : 0);
+  rightParam->FilterLen = DECIMATION * SINCN;       
+
   sinc[0] = 0;
   sinc[DECIMATION * SINCN - 1] = 0;      
   convolve(sinc1, DECIMATION, sinc1, DECIMATION, sinc2);
@@ -109,7 +138,7 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
   }
  
   sub_const = sum >> 1;
-  div_const = sub_const * Param->MaxVolume / 32768 / FILTER_GAIN;
+  div_const = sub_const * (leftParam->MaxVolume + rightParam->MaxVolume) / 32768 / (leftParam->Gain + rightParam->Gain);
   div_const = (div_const == 0 ? 1 : div_const);
  
   /* Look-Up Table. */
@@ -118,52 +147,82 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
   {
     uint32_t *coef_p = &coef[s][0];
     for (c = 0; c < 256; c++)
-      for (d = 0; d < DECIMATION / 8; d++)
+      for (d = 0; d < DECIMATION / 8; d++) {
         lut[c][d][s] = ((c >> 7)       ) * coef_p[d * 8    ] +
-                       ((c >> 6) & 0x01) * coef_p[d * 8 + 1] +
-                       ((c >> 5) & 0x01) * coef_p[d * 8 + 2] +
-                       ((c >> 4) & 0x01) * coef_p[d * 8 + 3] +
-                       ((c >> 3) & 0x01) * coef_p[d * 8 + 4] +
-                       ((c >> 2) & 0x01) * coef_p[d * 8 + 5] +
-                       ((c >> 1) & 0x01) * coef_p[d * 8 + 6] +
-                       ((c     ) & 0x01) * coef_p[d * 8 + 7];
+                       ((c >> 5) & 0x01) * coef_p[d * 8 + 1] +
+                       ((c >> 3) & 0x01) * coef_p[d * 8 + 2] +
+                       ((c >> 1) & 0x01) * coef_p[d * 8 + 3] +
+                       ((c >> 6) & 0x01) * coef_p[d * 8 + 4] +
+                       ((c >> 4) & 0x01) * coef_p[d * 8 + 5] +
+                       ((c >> 2) & 0x01) * coef_p[d * 8 + 6] +
+                       ((c >> 0) & 0x01) * coef_p[d * 8 + 7];
+      }
   }
 }
 
 // Decimation = 64, i.e. every 8 bytes produce an output value
-void Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
+void Open_PDM_Filter_64(uint8_t* data, int len, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *leftParam, TPDMFilter_InitStruct *rightParam)
 {
   uint8_t i, data_out_index;
-  uint8_t input_stride = 64 / 8; 
-  int64_t Z, Z0, Z1, Z2;
-  int64_t OldOut, OldIn, OldZ;
+  uint8_t input_stride = 64 / 8 * 2; 
+  int64_t leftOldOut, leftOldIn, leftOldZ;
+  int64_t rightOldOut, rightOldIn, rightOldZ;
  
-  OldOut = Param->OldOut;
-  OldIn = Param->OldIn;
-  OldZ = Param->OldZ;
+  leftOldOut = leftParam->OldOut;
+  leftOldIn = leftParam->OldIn;
+  leftOldZ = leftParam->OldZ;
+
+  rightOldOut = rightParam->OldOut;
+  rightOldIn = rightParam->OldIn;
+  rightOldZ = rightParam->OldZ;
   
-  for (i = 0, data_out_index = 0; i < Param->Fs / 1000; i++, data_out_index ++) {
-    Z0 = filter_tables_64(data, 0);
-    Z1 = filter_tables_64(data, 1);
-    Z2 = filter_tables_64(data, 2);
+  for (i = 0, data_out_index = 0; i < len; i++, data_out_index += 2) {
+    int64_t Z, Z0, Z1, Z2;
+    
+    Z0 = filter_tables_left_64(data, 0);
+    Z1 = filter_tables_left_64(data, 1);
+    Z2 = filter_tables_left_64(data, 2);
  
-    Z = Param->Coef[1] + Z2 - sub_const;
-    Param->Coef[1] = Param->Coef[0] + Z1;
-    Param->Coef[0] = Z0;
+    Z = leftParam->Coef[1] + Z2 - sub_const;
+    leftParam->Coef[1] = leftParam->Coef[0] + Z1;
+    leftParam->Coef[0] = Z0;
  
-    OldOut = (Param->HP_ALFA * (OldOut + Z - OldIn)) >> 8;
-    OldIn = Z;
-    OldZ = ((256 - Param->LP_ALFA) * OldZ + Param->LP_ALFA * OldOut) >> 8;
+    leftOldOut = (leftParam->HP_ALFA * (leftOldOut + Z - leftOldIn)) >> 8;
+    leftOldIn = Z;
+    leftOldZ = ((256 - leftParam->LP_ALFA) * leftOldZ + leftParam->LP_ALFA * leftOldOut) >> 8;
  
-    Z = OldZ * volume;
+    Z = leftOldZ * volume;
     Z = RoundDiv(Z, div_const);
     Z = SaturaLH(Z, -32700, 32700);
  
     dataOut[data_out_index] = Z;
+
+    Z0 = filter_tables_right_64(data, 0);
+    Z1 = filter_tables_right_64(data, 1);
+    Z2 = filter_tables_right_64(data, 2);
+ 
+    Z = rightParam->Coef[1] + Z2 - sub_const;
+    rightParam->Coef[1] = rightParam->Coef[0] + Z1;
+    rightParam->Coef[0] = Z0;
+ 
+    rightOldOut = (rightParam->HP_ALFA * (rightOldOut + Z - rightOldIn)) >> 8;
+    rightOldIn = Z;
+    rightOldZ = ((256 - rightParam->LP_ALFA) * rightOldZ + rightParam->LP_ALFA * rightOldOut) >> 8;
+ 
+    Z = rightOldZ * volume;
+    Z = RoundDiv(Z, div_const);
+    Z = SaturaLH(Z, -32700, 32700);
+ 
+    dataOut[data_out_index+1] = Z;
+
     data += input_stride;
   }
  
-  Param->OldOut = OldOut;
-  Param->OldIn = OldIn;
-  Param->OldZ = OldZ;
+  leftParam->OldOut = leftOldOut;
+  leftParam->OldIn = leftOldIn;
+  leftParam->OldZ = leftOldZ;
+
+  rightParam->OldOut = rightOldOut;
+  rightParam->OldIn = rightOldIn;
+  rightParam->OldZ = rightOldZ;
 }
