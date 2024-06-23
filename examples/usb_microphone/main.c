@@ -60,18 +60,7 @@ void on_pdm_samples_ready()
 
   pdm_microphone_read(sample_buffer, SAMPLES_PER_MS);
 
-// Every 5 seconds, generate a bump of 100 ms
-  // static int counter = 0;
-  // if (counter ++ == 5100) {
-  //   counter = 0;
-  // }
-  
   for (int i = SAMPLES_PER_MS - 1; i >= 0; i --) {
-    // if (counter >= 5000) {
-    //   sample_buffer[i * 2 + 1] = i < SAMPLE_BUFFER_SIZE/2 ? i * 4000 : (SAMPLE_BUFFER_SIZE-i) * 4000;
-    // } else {
-    //   sample_buffer[i * 2 + 1] = 0;
-    // }
     sample_buffer[i * 2] = sample_buffer[i];
     sample_buffer[i * 2 + 1] = sample_buffer[i];
   }
