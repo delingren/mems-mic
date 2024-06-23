@@ -7,6 +7,7 @@ Highlights of my changes:
 * Modify PIO instructions to read 2 data pins (they need to be consecutive). Each pin for one channel.
 * Modify PDM filter code to separate signals from the raw samples collected from the previous step. Bits representing the left and right channels are alternating. I did some bitwise gymnastics to separate them with very few operations.
 * Modify PDM filter code to filter both signals. The filter code is stateful. You need to basically create two filters for two channels. You can't call the filter function on two signals.
+* Removed some PDM filter code that doesn't apply to my application. So that I don't need to maintain its correctness.
 
 Original README follows
 
